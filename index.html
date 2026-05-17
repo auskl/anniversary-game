@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Lane 💖</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #000; color: #fff;
+  font-family: 'VT323', monospace;
+  overflow: hidden; height: 100vh; user-select: none;
+}
+.hidden { display: none !important; }
+
+/* ── SHARED SCREEN ──────────────────────────────────────────────────────── */
+.screen {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+/* ── LOGIN ──────────────────────────────────────────────────────────────── */
+#login-screen { background: radial-gradient(ellipse at 50% 60%, #1a0535 0%, #000 100%); }
+
+.login-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.login-star {
+  position: absolute; border-radius: 50%;
+  background: #fff; animation: twinkle var(--d) ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: .15; } to { opacity: .85; } }
+
+.login-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(18px, 3vw, 28px);
+  color: #f9c4d2; line-height: 1.7; text-align: center;
+  text-shadow: 0 0 24px rgba(249,196,210,.55);
+  margin-bottom: 10px; letter-spacing: 2px; position: relative;
+}
+.login-sub {
+  font-size: 22px; color: #a080c0; margin-bottom: 44px;
+  text-align: center; position: relative;
+}
+.login-input-wrap { position: relative; }
+#password-input {
+  font-family: 'VT323', monospace; font-size: 28px;
+  letter-spacing: 7px; text-align: center;
+  padding: 13px 28px; width: 280px;
+  background: rgba(255,255,255,.05);
+  border: 3px solid #f9c4d2; border-radius: 6px;
+  color: #fff; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  position: relative;
+}
+#password-input:focus {
+  border-color: #ff69b4;
+  box-shadow: 0 0 22px rgba(255,105,180,.35);
+}
+#login-error {
+  color: #ff5566; font-size: 19px; height: 26px;
+  margin-top: 14px; text-align: center;
+  animation: shake .35s ease; position: relative;
+}
+.login-hint { margin-top: 28px; color: #3e2060; font-size: 17px; position: relative; }
+.enter-hint {
+  margin-top: 14px; color: #7a4090; font-size: 19px; position: relative;
+  animation: blink 1.8s infinite;
+}
+
+/* ── CHARACTER SELECT ───────────────────────────────────────────────────── */
+#select-screen { background: radial-gradient(ellipse at 50% 40%, #0d1f48 0%, #000 100%); }
+.select-title {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(14px, 2.5vw, 20px);
+  color: #74b9ff; text-shadow: 0 0 18px rgba(116,185,255,.5);
+  margin-bottom: 8px; text-align: center;
+}
+.select-sub { color: #4a8abf; font-size: 21px; margin-bottom: 50px; }
+.avatar-row { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+.avatar-card {
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(255,255,255,.05); border: 3px solid rgba(255,255,255,.12);
+  border-radius: 18px; padding: 26px 36px; cursor: pointer;
+  transition: transform .2s ease, border-color .2s, box-shadow .2s, background .2s;
+}
+.avatar-card:hover {
+  transform: translateY(-10px) scale(1.06);
+  border-color: #74b9ff; background: rgba(116,185,255,.12);
+  box-shadow: 0 18px 48px rgba(116,185,255,.28);
+}
+.avatar-card .av-emoji { font-size: 72px; display: block; line-height: 1; }
+.avatar-card .av-name {
+  margin-top: 16px; font-family: 'Press Start 2P', monospace;
+  font-size: 10px; color: #9ab8e0; letter-spacing: 1px;
+}
+
+/* ── GAME CONTAINER ─────────────────────────────────────────────────────── */
+#game-container { position: fixed; inset: 0; background: #1565C0; }
+canvas { display: block; position: absolute; top: 0; left: 0; }
+
+/* ── HUD ────────────────────────────────────────────────────────────────── */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 9px 20px;
+  background: rgba(0,0,0,.72); backdrop-filter: blur(10px);
+  border-bottom: 2px solid rgba(255,255,255,.09);
+  display: flex; align-items: center; justify-content: space-between; z-index: 40;
+}
+.hud-title {
+  font-family: 'Press Start 2P', monospace; font-size: 9px;
+  color: #f9c4d2; letter-spacing: 1px;
+}
+#progress-stars { display: flex; gap: 6px; align-items: center; }
+.hud-star { font-size: 20px; transition: transform .2s; }
+.hud-star.lit { filter: drop-shadow(0 0 5px #FFD700); }
+.hud-star.pop { animation: starPop .45s ease; }
+.hud-controls { font-size: 15px; color: rgba(255,255,255,.35); }
+
+/* ── DIALOGUE BOX ───────────────────────────────────────────────────────── */
+#dialogue-box {
+  position: fixed; bottom: 18px; left: 50%; z-index: 50;
+  transform: translateX(-50%);
+  width: 88%; max-width: 880px;
+  border-radius: 10px; overflow: hidden;
+  box-shadow:
+    0 0 0 4px #0a0a1e,
+    0 0 0 7px #d8d8ff,
+    0 0 0 9px #0a0a1e,
+    0 10px 44px rgba(0,0,0,.85);
+  animation: dlgSlide .22s ease;
+}
+.dlg-header {
+  background: linear-gradient(135deg, #12195e, #0a2a70);
+  padding: 10px 20px; border-bottom: 3px solid rgba(200,200,255,.35);
+  display: flex; align-items: center; gap: 14px;
+}
+.dlg-portrait {
+  font-size: 36px; width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(255,255,255,.07);
+  border: 2px solid rgba(200,200,255,.4); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dlg-name {
+  font-family: 'Press Start 2P', monospace; font-size: 10px;
+  color: #d8d8ff; text-shadow: 1px 1px 0 #000;
+}
+.dlg-badge {
+  margin-left: auto; font-size: 15px; color: rgba(200,200,255,.5);
+}
+.dlg-body {
+  background: #0d0d22; padding: 18px 24px 32px; min-height: 92px; position: relative;
+}
+#dlg-text {
+  font-size: 22px; color: #eeeeff; line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+#dlg-text b {
+  color: #FFD700;
+  text-shadow: 0 0 6px rgba(255,215,0,0.4);
+  font-weight: normal;
+}
+.dlg-footer {
+  position: absolute; bottom: 6px; left: 24px; right: 14px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+.dlg-skip-hint { font-size: 13px; color: rgba(255,255,255,.25); }
+#dlg-arrow { font-size: 20px; color: #d8d8ff; animation: blink .85s infinite; }
+
+/* ── PHOTO POPUP ────────────────────────────────────────────────────────── */
+#photo-popup {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.93);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  animation: fadeIn .28s ease;
+}
+.photo-hdr {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+}
+.photo-hdr-icon { font-size: 30px; }
+.photo-hdr-name {
+  font-family: 'Press Start 2P', monospace; font-size: 10px; color: #f9c4d2;
+}
+/* Polaroid */
+.polaroid {
+  background: #fff; padding: 12px 12px 46px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.08);
+  max-width: min(580px, 90vw); width: 100%;
+  transform: rotate(-1deg);
+}
+.polaroid-img {
+  width: 100%; height: min(360px, 52vh);
+  background: #c0c0c0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+#popup-photo {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain; display: none;
+}
+#photo-placeholder {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; color: #777; padding: 20px; text-align: center;
+}
+#photo-placeholder .ph-big { font-size: 48px; }
+#photo-placeholder .ph-txt { font-size: 18px; font-family: 'VT323', monospace; }
+.polaroid-caption {
+  text-align: center; padding-top: 8px;
+  font-size: 17px; color: #444; font-family: 'VT323', monospace;
+}
+/* Navigation */
+.photo-nav {
+  display: flex; align-items: center; gap: 18px; margin-top: 18px;
+}
+.nav-btn {
+  background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3);
+  color: #fff; font-family: 'VT323', monospace; font-size: 26px;
+  width: 50px; height: 50px; border-radius: 8px; cursor: pointer;
+  transition: all .15s; display: flex; align-items: center; justify-content: center;
+}
+.nav-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.22); border-color: #fff; transform: scale(1.1);
+}
+.nav-btn:disabled { opacity: .22; cursor: default; }
+.photo-counter { font-size: 20px; color: #aaa; min-width: 64px; text-align: center; }
+.photo-close-hint { margin-top: 14px; font-size: 17px; color: rgba(255,255,255,.32); }
+.photo-close-hint b {
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: rgba(255,255,255,.55);
+}
+
+/* ── TOAST ──────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; top: 58px; left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(0,0,0,.88); color: #FFD700;
+  font-family: 'VT323', monospace; font-size: 21px;
+  padding: 9px 22px; border-radius: 6px;
+  border: 2px solid rgba(255,215,0,.45);
+  opacity: 0; transition: all .3s ease; z-index: 80;
+  pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── FINALE ─────────────────────────────────────────────────────────────── */
+#finale-screen { background: #000; overflow: hidden; }
+#finale-scroll {
+  position: absolute; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40px 20px;
+  transform: translateY(100vh);
+}
+#finale-text {
+  text-align: center; max-width: 680px;
+  line-height: 2.1; font-size: 28px; color: #f9c4d2;
+}
+.fin-big {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(16px, 2.5vw, 22px);
+  color: #fff; line-height: 1.9; display: block; margin: 24px 0;
+}
+.fin-hearts { font-size: 46px; display: block; margin: 18px 0; }
+
+/* The Action Buttons */
+#finale-actions {
+  position: absolute;
+  bottom: 60px;
+  display: flex;
+  gap: 20px;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+  z-index: 20;
+}
+.home-btn {
+  background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3);
+  color: #fff; font-family: 'VT323', monospace; font-size: 24px;
+  padding: 12px 24px; border-radius: 8px; cursor: pointer;
+  transition: all .2s;
+}
+.home-btn:hover {
+  background: rgba(255,255,255,.22); border-color: #fff; transform: scale(1.05);
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────────────────────────── */
+@keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes shake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 75%{transform:translateX(7px)} }
+@keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+@keyframes dlgSlide { from{transform:translateX(-50%) translateY(24px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+@keyframes starPop  { 0%{transform:scale(.4)} 60%{transform:scale(1.5)} 100%{transform:scale(1)} }
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <div class="login-stars" id="login-stars"></div>
+  <div class="login-title">Happy<br>Anniversary</div>
+  <div class="login-sub">Enter our key to unlock memory lane.</div>
+  <input type="password" id="password-input" placeholder="_ _ _ _ _ _" maxlength="12" autocomplete="off">
+  <div id="login-error"></div>
+  <div class="login-hint">Hint: our special date</div>
+  <div class="enter-hint">[ Press ENTER ]</div>
+</div>
+
+<div id="select-screen" class="screen hidden">
+  <div class="select-title">Choose Your Avatar</div>
+  <div class="select-sub">Who walks down memory lane?</div>
+  <div class="avatar-row">
+    <div class="avatar-card" onclick="startGame('🐢')">
+      <span class="av-emoji">🐢</span><span class="av-name">SQUIRTLE</span>
+    </div>
+    <div class="avatar-card" onclick="startGame('🐸')">
+      <span class="av-emoji">🐸</span><span class="av-name">BULBASAUR</span>
+    </div>
+    <div class="avatar-card" onclick="startGame('🦎')">
+      <span class="av-emoji">🦎</span><span class="av-name">CHARMANDER</span>
+    </div>
+  </div>
+</div>
+
+<div id="game-container" class="hidden">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-title">MEMORY LANE</div>
+    <div id="progress-stars"></div>
+    <div class="hud-controls">WASD · SPACE · ← → photos</div>
+  </div>
+
+  <div id="dialogue-box" class="hidden">
+    <div class="dlg-header">
+      <div class="dlg-portrait" id="dlg-portrait">🚗</div>
+      <div class="dlg-name" id="dlg-name">Memory</div>
+      <div class="dlg-badge" id="dlg-badge"></div>
+    </div>
+    <div class="dlg-body">
+      <div id="dlg-text"></div>
+      <div class="dlg-footer">
+        <span class="dlg-skip-hint" id="dlg-skip-hint">SPACE to skip</span>
+        <span id="dlg-arrow" class="hidden">▼</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="photo-popup" class="hidden">
+    <div class="photo-hdr">
+      <span class="photo-hdr-icon" id="photo-hdr-icon">🚗</span>
+      <span class="photo-hdr-name" id="photo-hdr-name">Memory</span>
+    </div>
+    <div class="polaroid">
+      <div class="polaroid-img">
+        <img id="popup-photo" src="" alt="">
+        <div id="photo-placeholder">
+          <span class="ph-big">📷</span>
+          <span class="ph-txt" id="ph-txt">Place photo here</span>
+        </div>
+      </div>
+      <div class="polaroid-caption" id="photo-caption"></div>
+    </div>
+    <div class="photo-nav">
+      <button class="nav-btn" id="prev-btn" onclick="prevPhoto()" disabled>◀</button>
+      <span class="photo-counter" id="photo-counter">1 / 1</span>
+      <button class="nav-btn" id="next-btn" onclick="nextPhoto()">▶</button>
+    </div>
+    <div class="photo-close-hint"><b>[SPACE]</b> to close</div>
+  </div>
+</div>
+
+<div id="finale-screen" class="screen hidden">
+  <div id="finale-scroll">
+    <div id="finale-text">
+      <span class="fin-hearts">💖</span>
+      <span class="fin-big">Thank you for spending the past year<br>with me as my girlfriend.</span>
+      I appreciate all the little things you do for me<br>
+      and supporting me with my very hectic schedule.<br>
+      It never goes unnoticed!<br><br>
+      Know that I always prioritise you and<br>
+      create time for you even when it doesn't seem like it!<br><br>
+      <span class="fin-big">Happy Anniversary!<br>Here's to creating more memories together.</span>
+      <span class="fin-hearts">🌸 💕 🌸</span>
+    </div>
+  </div>
+  <div id="finale-actions">
+    <button class="home-btn" onclick="returnToMap()">Back to Map</button>
+    <button class="home-btn" onclick="location.reload()">Restart Game</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const MEMORIES = [
+  { name: 'First Meeting',      icon: '🚗', imgs: [],
+    text: "<b>First Interaction.</b> Getting picked up in Wei Jien's car to have dessert in Homm Dessert where the first few sentences you uttered was \"You're missing out!\", which took me aback. Thought you looked pretty, nice wing eye make up and dressed elegantly!\n\nWhat was on your mind when you first saw me?" },
+  { name: 'Dandenong Hike',     icon: '⛰️', imgs: ['Photos/memory2_dandenong_hike.jpeg', 'Photos/memory2_dandenong_bridge.jpeg'],
+    text: "<b>Hiking in Dandenong Park.</b> It was funny how one of our first few dates you had to do something completely out of character — hiking and walking fast up the hill. You said you would bring me to the Conservatory and we made it happen in the end. Poor girl had to see the Ekans on my new proud watch too.\n\nDid you wonder what our next few dates would be like?" },
+  { name: 'Dinner at Nomad',    icon: '🍽️', imgs: ['Photos/memory3_nomad_sign.jpeg', 'Photos/memory3_nomad_food.jpeg'],
+    text: "<b>Dinner at Nomad.</b> I found it a little uncomfortable getting treated by you at a nice restaurant but enjoyed it nevertheless! On the way there, I said I was learning Chinese to better converse with you, which was pretty funny. Maybe that will help our communication. hehe\n\nWhat happened to my Chinese lessons?" },
+  { name: 'Cheese Fondue',      icon: '🫕', imgs: ['Photos/memory4_fondue_group.jpeg', 'Photos/memory4_fondue_couple.jpeg'],
+    text: "<b>Cheese Fondue Collab.</b> You wore the same white skirt that I liked and was so helpful with helping me take content. Though I was not a fan of the other people in our cabin, I enjoyed the group setting of us spending time together meeting others. It was like a foreshadow experience of the future where we both enjoy hosting.\n\nWhat would future hosting look like (frequency, group size, cuisine)?" },
+  { name: 'First Birthday',     icon: '🎂', imgs: ['Photos/memory5_birthday_selfie.jpeg', 'Photos/memory5_birthday_menu.jpeg', 'Photos/memory5_birthday_balloons.jpeg'],
+    text: "<b>Celebrating your first birthday together.</b> I had no idea what to do for you, as you have a very particular taste. Managed to create a menu for you that you liked and glad it all paid off!\n\nHow did you remember the birthday fun after ;)?" },
+  { name: 'TreeTop Adventure',  icon: '🌳', imgs: ['Photos/memory6_treetop_helmets.jpeg', 'Photos/memory6_treetop_group.jpeg'],
+    text: "<b>Going to TreeTop Adventures together.. twice.</b> I thought this was a great experience together enjoying each other's company in the car and managing to complete obstacles together. Hope you know you can lean on me!\n\nWhat was on your mind at Tree Top adventures?" },
+  { name: 'Food Adventures',    icon: '🥘', imgs: ['Photos/memory7_the_conservatory.jpeg', 'Photos/memory7_the_roe.jpeg', 'Photos/memory7_the_roe_alt.jpeg'],
+    text: "<b>Going to many tasty food places.</b> The Conservatory, The Roe. Food is the best way to connect and I have always enjoyed these!\n\nOut of all our dinner dates, which was the most memorable to you?" },
+  { name: 'Ed Sheeran Concert', icon: '🎸', imgs: ['Photos/memory8_ed_sheeran_concert.jpeg'],
+    text: "<b>Ed Sheeran Concert.</b> First time going to a concert with a girlfriend since high school days and managed to do it with my sister. It was a special experience enjoying the romantic songs together.\n\nWhat concert would you like to go to together next?" },
+];
+
+const BONUSES = [
+  { name: "Connie's Wedding",       icon: '🎩', img: 'Photos/formal_event.jpeg',        x: 380,  y: 1850 },
+  { name: 'A Christmas Carol Play', icon: '🎄', img: 'Photos/christmas_carol_show.jpeg', x: 2050, y: 1150 },
+  { name: "Leo's Birthday",   icon: '🐶', img: 'Photos/leo_dog_birthday.jpeg',     x: 360,  y: 720  },
+];
+
+const WW = 2400, WH = 2400;
+const START = { x: 1200, y: 2340 };
+
+// Winding landmark positions (bottom → top, left/right zigzag)
+const LM = [
+  { x: 1200, y: 2200, col: '#e17055' },
+  { x: 1780, y: 1870, col: '#0984e3' },
+  { x: 660,  y: 1580, col: '#fdcb6e' },
+  { x: 1640, y: 1280, col: '#a29bfe' },
+  { x: 820,  y: 980,  col: '#fd79a8' },
+  { x: 1740, y: 700,  col: '#00b894' },
+  { x: 640,  y: 420,  col: '#fab1a0' },
+  { x: 1200, y: 160,  col: '#81ecec' },
+];
+
+// Deterministic scenery so it never changes
+const SCENERY = (() => {
+  const out = [], icons = ['🌲','🌳','🌸','🍄','🌺','🪨','🦋','🌿','🌾','🍀'];
+  const r = (s, n) => { let x = Math.sin(s)*9999; return (x-Math.floor(x))*n; };
+  for (let i = 0; i < 180; i++) {
+    const x = r(i*1.3+.1, WW), y = r(i*2.7+.4, WH);
+    out.push({ x, y, icon: icons[Math.floor(r(i*.8, icons.length))], sz: 26+r(i*.5,18)|0 });
+  }
+  return out;
+})();
+
+// Pre-render static world to an offscreen canvas for performance
+let staticBg = null;
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let STATE = 'login';   // login | select | play | typing | dialogue | photo | finale
+let player = { x: START.x, y: START.y, spd: 6, emoji: '🐢', bob: 0 };
+let cam    = { x: 0, y: 0 };
+let visited = new Set();        // completed landmark indices
+let visitedBonuses = new Set(); // collected photo bonuses
+let interacting = -1;           // landmark currently open
+let activeBonusIdx = -1;        // bonus currently open
+let photoIdx = 0;
+let typeTimer = null;
+let keys = {};
+['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].forEach(k => keys[k]=false);
+
+// ── DOM REFS ──────────────────────────────────────────────────────────────────
+const $id = id => document.getElementById(id);
+const loginScreen   = $id('login-screen');
+const selectScreen  = $id('select-screen');
+const gameContainer = $id('game-container');
+const finaleScreen  = $id('finale-screen');
+const passInput     = $id('password-input');
+const loginError    = $id('login-error');
+const canvas        = $id('game-canvas');
+const ctx           = canvas.getContext('2d');
+const dialogueBox   = $id('dialogue-box');
+const dlgText       = $id('dlg-text');
+const dlgArrow      = $id('dlg-arrow');
+const photoPopup    = $id('photo-popup');
+const popupPhoto    = $id('popup-photo');
+const photoPlaceholder = $id('photo-placeholder');
+
+// ── STARFIELD (login bg) ──────────────────────────────────────────────────────
+(function buildStars() {
+  const wrap = $id('login-stars');
+  for (let i = 0; i < 130; i++) {
+    const s = document.createElement('div');
+    const sz = Math.random()*2+.5;
+    s.className = 'login-star';
+    Object.assign(s.style, {
+      left: Math.random()*100+'%', top: Math.random()*100+'%',
+      width: sz+'px', height: sz+'px', opacity: Math.random()*.6+.1,
+      '--d': (1.5+Math.random()*3).toFixed(1)+'s',
+    });
+    wrap.appendChild(s);
+  }
+})();
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+passInput.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const raw = passInput.value.trim();
+  const digits = raw.replace(/\D/g, '');
+  if (digits === '170525' || digits === '17052025' || raw.toLowerCase().includes('may 17')) {
+    playChime();
+    loginError.textContent = '';
+    loginScreen.style.cssText = 'transition:opacity .5s;opacity:0;pointer-events:none';
+    setTimeout(() => {
+      loginScreen.classList.add('hidden');
+      loginScreen.style.cssText = '';
+      selectScreen.classList.remove('hidden');
+      STATE = 'select';
+    }, 520);
+  } else {
+    loginError.textContent = 'Try again. Hint: DDMMYY or DD/MM/YYYY';
+    loginError.style.animation = 'none';
+    requestAnimationFrame(() => { loginError.style.animation = ''; });
+    passInput.value = '';
+  }
+});
+
+// ── SYNTH CHIME ───────────────────────────────────────────────────────────────
+function playChime() {
+  try {
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.frequency.value = f; o.type = 'sine';
+      const t = ac.currentTime + i*.15;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(.2,t+.04);
+      g.gain.exponentialRampToValueAtTime(.001,t+.9);
+      o.start(t); o.stop(t+.95);
+    });
+  } catch(_) {}
+}
+
+// ── SELECT ────────────────────────────────────────────────────────────────────
+function startGame(emoji) {
+  player.emoji = emoji;
+  selectScreen.classList.add('hidden');
+  gameContainer.classList.remove('hidden');
+  resizeCanvas();
+  buildHUD();
+  buildStaticBg();
+  STATE = 'play';
+  requestAnimationFrame(gameLoop);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function buildHUD() {
+  const wrap = $id('progress-stars');
+  wrap.innerHTML = '';
+  MEMORIES.forEach((_, i) => {
+    const s = document.createElement('span');
+    s.className = 'hud-star'; s.id = 'star'+i; s.textContent = '☆';
+    wrap.appendChild(s);
+  });
+}
+function refreshHUD() {
+  visited.forEach(i => {
+    const s = $id('star'+i);
+    if (s && !s.classList.contains('lit')) {
+      s.textContent = '⭐'; s.classList.add('lit','pop');
+    }
+  });
+}
+
+// ── CANVAS / RESIZE ───────────────────────────────────────────────────────────
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', () => { resizeCanvas(); buildStaticBg(); });
+
+// ── STATIC BACKGROUND PRE-RENDER ──────────────────────────────────────────────
+function buildStaticBg() {
+  staticBg = document.createElement('canvas');
+  staticBg.width = WW; staticBg.height = WH;
+  const c = staticBg.getContext('2d');
+
+  // Ocean
+  c.fillStyle = '#1565C0'; c.fillRect(0,0,WW,WH);
+  // Wave shimmer stripes
+  c.fillStyle = 'rgba(100,200,255,.06)';
+  for (let i=0;i<60;i++) c.fillRect((i*97)%WW, (i*137)%WH, 60+(i*41)%100, 2);
+
+  // Grass island
+  rrect(c,120,60,WW-240,WH-120,90); c.fillStyle='#2d8c3e'; c.fill();
+  rrect(c,190,130,WW-380,WH-260,70); c.fillStyle='#38a04a'; c.fill();
+
+  // Path: shadow then border then gold then dashes
+  const pts = [START, ...LM];
+  function stroke(col, lw) {
+    c.strokeStyle=col; c.lineWidth=lw; c.lineJoin='round'; c.lineCap='round';
+    c.beginPath(); c.moveTo(pts[0].x,pts[0].y);
+    pts.slice(1).forEach(p=>c.lineTo(p.x,p.y)); c.stroke();
+  }
+  stroke('rgba(0,0,0,.28)', 76);
+  stroke('#5D4037', 72);
+  stroke('#FDD835', 56);
+  stroke('#FFE57F', 44);
+  c.setLineDash([20,30]); stroke('rgba(255,255,255,.22)', 7); c.setLineDash([]);
+
+  // Scenery
+  c.textAlign='center'; c.textBaseline='middle';
+  SCENERY.forEach(it => { c.font=`${it.sz}px serif`; c.fillText(it.icon,it.x,it.y); });
+}
+
+function rrect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath();
+}
+
+// ── GAME LOOP ─────────────────────────────────────────────────────────────────
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// ── UPDATE ────────────────────────────────────────────────────────────────────
+function update() {
+  if (STATE !== 'play') return;
+  let nx=player.x, ny=player.y, moved=false;
+
+  if (keys.ArrowUp   ||keys.w) { ny-=player.spd; moved=true; }
+  if (keys.ArrowDown ||keys.s) { ny+=player.spd; moved=true; }
+  if (keys.ArrowLeft ||keys.a) { nx-=player.spd; moved=true; }
+  if (keys.ArrowRight||keys.d) { nx+=player.spd; moved=true; }
+
+  nx = Math.max(160, Math.min(WW-160, nx));
+  ny = Math.max(100, Math.min(WH-80,  ny));
+
+  // Gate: block at Y of first unvisited landmark
+  const gate = gateY();
+  if (ny < gate) ny = gate;
+
+  player.x=nx; player.y=ny;
+  if (moved) player.bob += .22;
+
+  // Camera: center on player, clamped to world
+  cam.x = Math.max(0, Math.min(player.x - canvas.width/2,  WW-canvas.width));
+  cam.y = Math.max(0, Math.min(player.y - canvas.height/2, WH-canvas.height));
+}
+
+function gateY() {
+  for (let i=0;i<LM.length;i++) if (!visited.has(i)) return LM[i].y-60;
+  return -Infinity;
+}
+function nearbyIdx() {
+  for (let i=0;i<LM.length;i++)
+    if (Math.hypot(player.x-LM[i].x, player.y-LM[i].y)<92) return i;
+  return -1;
+}
+function nextUnvisited() {
+  for (let i=0;i<LM.length;i++) if (!visited.has(i)) return i;
+  return LM.length;
+}
+function nearbyBonusIdx() {
+  for (let i=0;i<BONUSES.length;i++)
+    if (Math.hypot(player.x-BONUSES[i].x, player.y-BONUSES[i].y)<80) return i;
+  return -1;
+}
+
+// ── DRAW ──────────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Blit static background
+  if (staticBg) ctx.drawImage(staticBg, -cam.x, -cam.y);
+
+  ctx.save();
+  ctx.translate(-cam.x, -cam.y);
+  drawLandmarks();
+  drawBonuses();
+  drawPlayer();
+  ctx.restore();
+}
+
+function drawLandmarks() {
+  const near = nearbyIdx(), next = nextUnvisited(), now = Date.now();
+  LM.forEach((lm, i) => {
+    const done  = visited.has(i);
+    const isNext= i===next;
+    const isNear= i===near;
+    const pulse = Math.sin(now/380)*9;
+
+    ctx.save();
+    if (isNear)       { ctx.shadowColor='#FFD700'; ctx.shadowBlur=32+pulse; }
+    else if (isNext)  { ctx.shadowColor='rgba(255,255,255,.6)'; ctx.shadowBlur=18+pulse*.4; }
+
+    // Circle
+    ctx.fillStyle = done ? '#4CAF50' : lm.col;
+    ctx.beginPath(); ctx.arc(lm.x,lm.y,46,0,Math.PI*2); ctx.fill();
+
+    // Border
+    ctx.strokeStyle = done ? '#A5D6A7' : (isNext ? '#FFD700' : '#fff');
+    ctx.lineWidth   = isNext ? 5 : 3;
+    ctx.stroke();
+    ctx.restore();
+
+    // Emoji icon
+    ctx.save();
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='36px serif';
+    ctx.fillText(MEMORIES[i].icon, lm.x, lm.y+2);
+
+    // Badge: number (top-left of circle)
+    ctx.font='bold 12px sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.8)';
+    ctx.fillText(i+1, lm.x-38, lm.y-38);
+
+    // Completed tick
+    if (done) { ctx.font='18px serif'; ctx.fillText('✅', lm.x+34, lm.y-36); }
+
+    // Nearby [SPACE] prompt
+    if (isNear && STATE==='play') {
+      const bounce = Math.sin(now/210)*5;
+      const label = done ? '[ revisit ]' : '[ SPACE ]';
+      ctx.font='bold 14px sans-serif';
+      ctx.strokeStyle='#000'; ctx.lineWidth=3;
+      ctx.strokeText(label, lm.x, lm.y-72+bounce);
+      ctx.fillStyle='#FFD700';
+      ctx.fillText(label, lm.x, lm.y-72+bounce);
+    }
+    ctx.restore();
+  });
+}
+
+function drawBonuses() {
+  const nearB=nearbyBonusIdx(), now=Date.now();
+  BONUSES.forEach((b, i) => {
+    const done=visitedBonuses.has(i), isNear=i===nearB;
+    const pulse=Math.sin(now/320)*8;
+
+    ctx.save();
+    if (isNear) { ctx.shadowColor='#FFD700'; ctx.shadowBlur=28+pulse; }
+
+    // Dashed gold circle
+    ctx.fillStyle= done ? 'rgba(100,100,100,.3)' : 'rgba(255,215,0,.15)';
+    ctx.beginPath(); ctx.arc(b.x,b.y,32,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle= done ? '#555' : '#FFD700';
+    ctx.lineWidth=3; ctx.setLineDash([6,4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+
+    // Camera icon
+    ctx.save();
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha= done ? 0.35 : 1;
+    ctx.font='22px serif'; ctx.fillText('📷', b.x, b.y+2);
+
+    // "BONUS" label
+    if (!done) {
+      ctx.font='bold 11px sans-serif';
+      ctx.strokeStyle='#000'; ctx.lineWidth=3;
+      ctx.strokeText('📸 BONUS', b.x, b.y-46);
+      ctx.fillStyle='#FFD700'; ctx.fillText('📸 BONUS', b.x, b.y-46);
+    }
+
+    if (done) { ctx.font='14px serif'; ctx.fillText('✅', b.x+26, b.y-26); }
+
+    // Nearby prompt
+    if (isNear && STATE==='play') {
+      const bounce=Math.sin(now/210)*5;
+      ctx.font='bold 14px sans-serif';
+      ctx.strokeStyle='#000'; ctx.lineWidth=3;
+      ctx.strokeText('[ SPACE ]', b.x, b.y-60+bounce);
+      ctx.fillStyle='#FFD700'; ctx.fillText('[ SPACE ]', b.x, b.y-60+bounce);
+    }
+    ctx.restore();
+  });
+}
+
+function drawPlayer() {
+  const bob = Math.sin(player.bob)*4;
+  ctx.save();
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(player.x, player.y+26, 22, 9, 0, 0, Math.PI*2); ctx.fill();
+  // Emoji
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='52px serif';
+  ctx.fillText(player.emoji, player.x, player.y+bob);
+  ctx.restore();
+}
+
+// ── INTERACTION: DIALOGUE ─────────────────────────────────────────────────────
+function tryInteract() {
+  const idx = nearbyIdx();
+  if (idx>=0) { interacting=idx; openDialogue(idx); return; }
+  const bi = nearbyBonusIdx();
+  if (bi>=0) openBonusPhoto(bi);
+}
+
+function openDialogue(idx) {
+  STATE='typing';
+  const mem = MEMORIES[idx];
+  $id('dlg-portrait').textContent = mem.icon;
+  $id('dlg-name').textContent     = mem.name;
+  $id('dlg-badge').textContent    = visited.has(idx) ? '📖 revisit' : `${idx+1} / 8`;
+  $id('dlg-skip-hint').textContent= 'SPACE to skip';
+  dlgText.innerHTML=''; 
+  dlgArrow.classList.add('hidden');
+  dialogueBox.classList.remove('hidden');
+
+  let i=0; const full=mem.text;
+  if (typeTimer) clearTimeout(typeTimer);
+  function tick() {
+    if (STATE!=='typing') return;
+    if (i<full.length) { 
+      // Skip over HTML tags instantly so the typewriter effect doesn't break
+      if (full[i] === '<') {
+        while (i < full.length && full[i] !== '>') i++;
+        i++; 
+      }
+      i++; 
+      dlgText.innerHTML = full.substring(0, i); 
+      typeTimer=setTimeout(tick, 22); 
+    }
+    else { finishTyping(); }
+  }
+  tick();
+}
+
+function finishTyping() {
+  STATE='dialogue';
+  dlgArrow.classList.remove('hidden');
+  // If there are no images, prompt to close, otherwise prompt for photo
+  if (MEMORIES[interacting].imgs.length === 0) {
+    $id('dlg-skip-hint').textContent='SPACE to continue';
+  } else {
+    $id('dlg-skip-hint').textContent='SPACE to see photo';
+  }
+}
+
+function skipOrAdvance() {
+  if (STATE==='typing') {
+    clearTimeout(typeTimer);
+    dlgText.innerHTML=MEMORIES[interacting].text;
+    finishTyping();
+  } else if (STATE==='dialogue') {
+    dialogueBox.classList.add('hidden');
+    // If the memory has no images, skip the photo popup entirely
+    if (MEMORIES[interacting].imgs.length === 0) {
+        closePhoto(); 
+    } else {
+        openPhoto();
+    }
+  }
+}
+
+// ── INTERACTION: PHOTO ────────────────────────────────────────────────────────
+function openPhoto() {
+  STATE='photo'; photoIdx=0;
+  renderPhoto();
+  photoPopup.classList.remove('hidden');
+}
+
+function openBonusPhoto(bi) {
+  activeBonusIdx=bi; photoIdx=0;
+  renderPhoto();
+  photoPopup.classList.remove('hidden');
+  STATE='photo';
+}
+
+function renderPhoto() {
+  let name, icon, imgs;
+  if (activeBonusIdx>=0) {
+    const b=BONUSES[activeBonusIdx];
+    name=b.name; icon=b.icon; imgs=[b.img];
+  } else {
+    const mem=MEMORIES[interacting];
+    name=mem.name; icon=mem.icon; imgs=mem.imgs;
+  }
+  const src=imgs[photoIdx]||'';
+  $id('photo-hdr-icon').textContent= icon;
+  $id('photo-hdr-name').textContent= name;
+  $id('photo-counter').textContent = `${photoIdx+1} / ${imgs.length}`;
+  $id('prev-btn').disabled = photoIdx===0;
+  $id('next-btn').disabled = photoIdx>=imgs.length-1;
+  $id('photo-caption').textContent = name;
+  $id('ph-txt').textContent = `Add ${src} to game folder`;
+
+  popupPhoto.style.display='none';
+  photoPlaceholder.style.display='flex';
+
+  popupPhoto.onload  = ()=>{ popupPhoto.style.display='block'; photoPlaceholder.style.display='none'; };
+  popupPhoto.onerror = ()=>{ popupPhoto.style.display='none';  photoPlaceholder.style.display='flex'; };
+  if (src) popupPhoto.src=src;
+}
+
+function prevPhoto() { if (photoIdx>0)                         { photoIdx--; renderPhoto(); } }
+function nextPhoto() { if (photoIdx<MEMORIES[interacting].imgs.length-1){ photoIdx++; renderPhoto(); } }
+
+function closePhoto() {
+  photoPopup.classList.add('hidden');
+
+  // Photo bonus path
+  if (activeBonusIdx>=0) {
+    if (!visitedBonuses.has(activeBonusIdx)) {
+      visitedBonuses.add(activeBonusIdx);
+      showToast(`📸 Photo Bonus found!`);
+    }
+    activeBonusIdx=-1;
+    STATE='play';
+    return;
+  }
+
+  // Memory path
+  const wasNew = !visited.has(interacting);
+  visited.add(interacting);
+
+  if (wasNew) {
+    refreshHUD();
+    showToast(`✨ Memory ${interacting+1} unlocked!`);
+  }
+
+  if (visited.size>=MEMORIES.length) {
+    setTimeout(triggerFinale, 700);
+  } else {
+    STATE='play';
+    interacting=-1;
+  }
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  gameContainer.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),420); },2800);
+}
+
+// ── FINALE ────────────────────────────────────────────────────────────────────
+function triggerFinale() {
+  STATE='finale';
+  gameContainer.classList.add('hidden');
+  finaleScreen.classList.remove('hidden');
+
+  // Scroll text up — compute how far so all content is visible
+  const scroll=$id('finale-scroll');
+  setTimeout(()=>{
+    const viewH  = window.innerHeight;
+    const contentH = scroll.scrollHeight;
+    // End when bottom of content sits ~80px above bottom of viewport
+    const endY = Math.min(viewH * 0.15, viewH - contentH - 80);
+    const duration = Math.max(14, (viewH + Math.abs(endY)) / 65);
+    scroll.style.transition = `transform ${duration}s ease-out`;
+    scroll.style.transform  = `translateY(${endY}px)`;
+    // Show buttons only after scroll finishes
+    setTimeout(()=>{
+      $id('finale-actions').style.opacity = '1';
+    }, (duration + 0.5) * 1000);
+  }, 600);
+}
+
+function returnToMap() {
+  STATE='play';
+  finaleScreen.classList.add('hidden');
+  gameContainer.classList.remove('hidden');
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  // Arrow nav inside photo popup
+  if (STATE==='photo') {
+    if (e.key==='ArrowLeft')  { prevPhoto(); return; }
+    if (e.key==='ArrowRight') { nextPhoto(); return; }
+    if (e.code==='Space')     { e.preventDefault(); closePhoto(); return; }
+  }
+
+  // Movement keys (only register when playing)
+  if (STATE==='play' && keys.hasOwnProperty(e.key)) keys[e.key]=true;
+
+  if (e.code==='Space') {
+    e.preventDefault();
+    if      (STATE==='play')     tryInteract();
+    else if (STATE==='typing' || STATE==='dialogue') skipOrAdvance();
+  }
+});
+
+window.addEventListener('keyup', e => {
+  if (keys.hasOwnProperty(e.key)) keys[e.key]=false;
+});
+</script>
+</body>
+</html>
